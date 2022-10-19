@@ -83,8 +83,14 @@ test_df.write.mode("overwrite").format("delta").save(test_delta_path)
 
 # TODO
 data_version = 0
-train_delta = <FILL_IN>
-test_delta = <FILL_IN>
+train_delta = spark.read \
+  .format("delta") \
+  .option("versionAsOf", data_version) \
+  .load(train_delta_path)
+test_delta = spark.read \
+  .format("delta") \
+  .option("versionAsOf", data_version) \
+  .load(test_delta_path)
 
 # COMMAND ----------
 
@@ -136,6 +142,8 @@ with mlflow.start_run(run_name="lr_model") as run:
     mlflow.log_param("data_path", train_delta_path)  
     # TODO: Log label: price-all-features
     # TODO: Log data_version: data_version
+    mlflow.log_param("label", "price-all-features")
+    mlflow.log_param("data_version", data_version)
 
 
     # Create pipeline
@@ -146,6 +154,7 @@ with mlflow.start_run(run_name="lr_model") as run:
 
     # Log pipeline
     # TODO: Log model: model
+    mlflow.spark.log_model(model, "model", input_example=train_delta.limit(5).toPandas())
 
     # Create predictions and metrics
     pred_df = model.transform(test_delta)
@@ -156,6 +165,8 @@ with mlflow.start_run(run_name="lr_model") as run:
     # Log metrics
     # TODO: Log RMSE
     # TODO: Log R2
+    mlflow.log_metric("rmse", rmse)
+    mlflow.log_metric("r2", r2)
 
     run_id = run.info.run_id
 
@@ -238,7 +249,8 @@ wait_for_model(model_name, 1, stage="Staging")
 
 # TODO
 client.update_registered_model(
-  <FILL_IN>
+    name=model_details.name,
+    description="This model forecasts Airbnb housing list prices based on various listing inputs."
 )
 
 # COMMAND ----------
@@ -279,8 +291,27 @@ test_new = test_delta.withColumn("log_price", log(col("price")))
 # COMMAND ----------
 
 # TODO
-train_new.write.<FILL_IN>
-test_new.write.<FILL_IN>
+# train_new.write.<FILL_IN>
+# test_new.write.<FILL_IN>
+
+
+# train_df.write.mode("overwrite").format("delta").save(train_delta_path)
+# test_df.write.mode("overwrite").format("delta").save(test_delta_path)
+
+# loans.write.format("delta") \
+#            .option("mergeSchema", "true") \
+#            .mode("append") \
+#            .save(DELTALAKE_SILVER_PATH)
+
+
+train_new.write.format("delta") \
+           .option("mergeSchema", "true") \
+           .mode("overwrite") \
+           .save(train_delta_path)
+test_new.write.format("delta") \
+           .option("mergeSchema", "true") \
+           .mode("overwrite") \
+           .save(test_delta_path)
 
 # COMMAND ----------
 
@@ -376,14 +407,14 @@ with mlflow.start_run(run_name="lr_log_model") as run:
 # TODO
 data_version = 0
 
-mlflow.search_runs(<FILL_IN>)
+mlflow.search_runs(filter_string=f"params.data_path = '{train_delta_path}' and params.data_version = {data_version}")
 
 # COMMAND ----------
 
 # TODO
 data_version = 1
 
-mlflow.search_runs(<FILL_IN>)
+mlflow.search_runs(filter_string=f"params.data_path = '{train_delta_path}' and params.data_version = {data_version}")
 
 # COMMAND ----------
 
@@ -432,8 +463,12 @@ wait_for_model(model_name, new_model_version)
 # TODO
 # Move Model into Production
 client.transition_model_version_stage(
-  <FILL_IN>
+    name=model_name,
+    version=new_model_version,
+    stage="Production"
 )
+
+
 
 # COMMAND ----------
 

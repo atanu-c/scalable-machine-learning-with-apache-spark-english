@@ -111,7 +111,7 @@ pred_df = pipeline_model.transform(log_test_df)
 
 # COMMAND ----------
 
-
+display(pred_df)
 
 # COMMAND ----------
 
