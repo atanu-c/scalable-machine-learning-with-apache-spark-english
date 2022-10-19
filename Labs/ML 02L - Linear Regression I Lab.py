@@ -42,15 +42,15 @@ from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.regression import LinearRegression
 
-vec_assembler = # FILL_IN
+vec_assembler = VectorAssembler(inputCols=["bedrooms", "bathrooms", "bathrooms_na", "minimum_nights", "number_of_reviews"], outputCol="features")
 
-lr_model = # FILL_IN
+lr_model = LinearRegression(featuresCol="features", labelCol="price").fit(vec_assembler.transform(train_df))
 
-pred_df = # FILL_IN
+pred_df = lr_model.transform(vec_assembler.transform(test_df))
 
 regression_evaluator = RegressionEvaluator(predictionCol="prediction", labelCol="price", metricName="rmse")
-rmse = # FILL_IN
-r2 = # FILL_IN
+rmse = regression_evaluator.evaluate(pred_df)
+r2 = regression_evaluator.setMetricName("r2").evaluate(pred_df)
 print(f"RMSE is {rmse}")
 print(f"R2 is {r2}")
 
