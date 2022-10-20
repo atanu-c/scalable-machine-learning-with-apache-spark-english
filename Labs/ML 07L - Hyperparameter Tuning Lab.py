@@ -93,8 +93,8 @@ vec_assembler = VectorAssembler(inputCols=assembler_inputs, outputCol="features"
 # COMMAND ----------
 
 # TODO
-
-rf = <FILL_IN>
+from pyspark.ml.classification import RandomForestClassifier
+rf = RandomForestClassifier(labelCol="priceClass", maxBins=40, seed=42)
 
 # COMMAND ----------
 
@@ -118,6 +118,13 @@ rf = <FILL_IN>
 
 # TODO
 
+from pyspark.ml.tuning import ParamGridBuilder
+
+param_grid = (ParamGridBuilder()
+              .addGrid(rf.maxDepth, [2, 5, 10])
+              .addGrid(rf.numTrees, [10, 20, 100])
+              .build())
+
 # COMMAND ----------
 
 # MAGIC %md <i18n value="e1862bae-e31e-4f5a-ab0e-926261c4e27b"/>
@@ -135,6 +142,12 @@ rf = <FILL_IN>
 # COMMAND ----------
 
 # TODO
+from pyspark.ml.evaluation import BinaryClassificationEvaluator
+
+evaluator = BinaryClassificationEvaluator(labelCol="priceClass", 
+                                          metricName='areaUnderROC'
+                                         )
+
 
 # COMMAND ----------
 
@@ -154,7 +167,13 @@ rf = <FILL_IN>
 
 from pyspark.ml.tuning import CrossValidator
 
-cv = <FILL_IN>
+cv = CrossValidator(estimator=rf, 
+                    evaluator=evaluator, 
+                    estimatorParamMaps=param_grid, 
+                    numFolds=3, 
+                    seed=42,
+                    parallelism=4
+                   )
 
 # COMMAND ----------
 
@@ -189,9 +208,14 @@ pipeline_model = pipeline.fit(train_df)
 cv_model = pipeline_model.stages[-1]
 rf_model = cv_model.bestModel
 
-# list(zip(cv_model.getEstimatorParamMaps(), cv_model.avgMetrics))
+list(zip(cv_model.getEstimatorParamMaps(), cv_model.avgMetrics))
 
 print(rf_model.explainParams())
+
+# COMMAND ----------
+
+list(zip(cv_model.getEstimatorParamMaps(), cv_model.avgMetrics))
+
 
 # COMMAND ----------
 
@@ -228,9 +252,8 @@ top_features
 # COMMAND ----------
 
 # TODO
-
-pred_df = <FILL_IN>
-area_under_roc = <FILL_IN>
+pred_df = pipeline_model.transform(test_df)
+area_under_roc = evaluator.evaluate(pred_df)
 print(f"Area under ROC is {area_under_roc:.2f}")
 
 # COMMAND ----------
@@ -246,6 +269,7 @@ print(f"Area under ROC is {area_under_roc:.2f}")
 # COMMAND ----------
 
 # TODO
+rf_model.write().overwrite().save(DA.paths.working_dir)
 
 # COMMAND ----------
 
