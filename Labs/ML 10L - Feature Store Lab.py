@@ -82,7 +82,7 @@ print(table_name)
 # TODO
 from databricks import feature_store
  
-fs = # FILL_IN
+fs = feature_store.FeatureStoreClient()
 
 # COMMAND ----------
 
@@ -100,13 +100,20 @@ fs = # FILL_IN
 
 # COMMAND ----------
 
-# TODO
-@feature_store.feature_table
-def select_features(dataframe):
-    return # FILL_IN
-
-covid_features_df = select_features(covid_df)
+## select numeric features and exclude target column "price"
+numeric_cols = [x.name for x in covid_df.schema.fields if (x.name != "deceased")]
+covid_features_df = covid_df.select( numeric_cols)
 display(covid_features_df)
+
+# COMMAND ----------
+
+# # TODO
+# @feature_store.feature_table
+# def select_features(dataframe):
+#     return dataframe.select(["index"] + numeric_cols)
+
+# covid_features_df = select_features(covid_df)
+# display(covid_features_df)
 
 # COMMAND ----------
 
@@ -126,12 +133,13 @@ display(covid_features_df)
 
 # TODO
 fs.create_table(
-    name=#FILL_IN,
-    primary_keys=#FILL_IN,
-    df=#FILL_IN,
-    schema=#FILL_IN,
-    description=#FILL_IN
+    name=table_name,
+    primary_keys=["index"],
+    df=covid_features_df,
+    schema=covid_features_df.schema,
+    description="features of covid data"
 )
+
 
 # COMMAND ----------
 
@@ -173,9 +181,9 @@ display(add_df)
 
 # TODO
 fs.write_table(
-    name=#FILL_IN,
-    df=#FILL_IN,
-    mode=#FILL_IN
+    name=table_name,
+    df=add_df,
+    mode="merge"
 )
 
 # COMMAND ----------
@@ -189,8 +197,7 @@ fs.write_table(
 # COMMAND ----------
 
 # TODO
-updated_df = #FILL_IN
-
+updated_df = fs.read_table(name=table_name)
 display(updated_df)
 
 # COMMAND ----------
@@ -225,16 +232,23 @@ def load_data(table_name, lookup_key):
     model_feature_lookups = [feature_store.FeatureLookup(table_name=table_name, lookup_key=lookup_key)]
 
     # fs.create_training_set will look up features in model_feature_lookups with matched key from inference_data_df
-    training_set = fs.create_training_set(target_df, model_feature_lookups, label="deceased", exclude_columns=["index","date"])
+    training_set = fs.create_training_set(target_df, 
+                                          model_feature_lookups, 
+                                          label="deceased", 
+                                          exclude_columns=["index","date"])
     training_pd = training_set.load_df().toPandas()
 
     # Create train and test datasets
     X = training_pd.drop("deceased", axis=1)
     y = training_pd["deceased"]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, 
+                                                        y, 
+                                                        test_size=0.2, 
+                                                        random_state=42)
     return X_train, X_test, y_train, y_test, training_set
 
-X_train, X_test, y_train, y_test, training_set = load_data(table_name, "index")
+X_train, X_test, y_train, y_test, training_set = load_data(table_name, 
+                                                           "index")
 X_train.head()
 
 # COMMAND ----------
