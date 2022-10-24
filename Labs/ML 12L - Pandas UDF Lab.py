@@ -86,8 +86,8 @@ spark_df = spark.createDataFrame(df)
 
 # TODO
 
-model_path = <FILL_IN>
-predict = mlflow.pyfunc.spark_udf(<FILL_IN>)
+model_path = "dbfs:/databricks/mlflow-tracking/4a83b9feb12f485cb102695a869b7f2a/aeed239a42a54d3b93175d6f08d44a3f/artifacts/model"
+predict = mlflow.pyfunc.spark_udf(spark, model_path)
 
 # COMMAND ----------
 
@@ -103,9 +103,9 @@ predict = mlflow.pyfunc.spark_udf(<FILL_IN>)
 # COMMAND ----------
 
 # TODO
-
+from pyspark.sql.functions import struct
 features = X_train.columns
-display(spark_df.withColumn("prediction", <FILL_IN>))
+display(spark_df.withColumn("prediction", predict(*features)))
 
 # COMMAND ----------
 
